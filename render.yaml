@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: velodash
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd backend && gunicorn app:app
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.0
