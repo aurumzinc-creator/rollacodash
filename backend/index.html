@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VeloDash — Club Cycling Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ── Design Tokens ── */
+:root {
+  --black:   #0a0a0a;
+  --dark1:   #111318;
+  --dark2:   #1a1d24;
+  --dark3:   #22262f;
+  --dark4:   #2c3140;
+  --border:  rgba(255,255,255,0.07);
+  --surface: rgba(255,255,255,0.04);
+  --lime:    #c8f53e;
+  --lime2:   #9dc92e;
+  --red:     #ff4545;
+  --amber:   #ffb020;
+  --blue:    #3ea8ff;
+  --text1:   #f0f2f5;
+  --text2:   #8b95a8;
+  --text3:   #555e72;
+  --r:       10px;
+  --r-sm:    6px;
+  --sidebar: 240px;
+  --header:  60px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body {
+  font-family: 'Barlow', sans-serif;
+  background: var(--black);
+  color: var(--text1);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+h1,h2,h3,h4 { font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.02em; }
+a { text-decoration: none; color: inherit; }
+button { cursor: pointer; border: none; font-family: inherit; }
+input, select, textarea {
+  font-family: inherit;
+  background: var(--dark3);
+  border: 1px solid var(--border);
+  color: var(--text1);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  width: 100%;
+  font-size: 0.9rem;
+  transition: border-color .2s;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--lime);
+}
+select option { background: var(--dark2); }
+
+/* ── Layout ── */
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar);
+  background: var(--dark1);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  transition: transform .3s ease;
+  z-index: 100;
+}
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-mark {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--lime);
+  display: flex; align-items: center; gap: 6px;
+}
+.logo-mark span { color: var(--text1); }
+.logo-sub { font-size: 0.65rem; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; }
+.nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border-radius: 0;
+  transition: all .15s;
+  border-left: 3px solid transparent;
+  position: relative;
+}
+.nav-item:hover { color: var(--text1); background: var(--surface); }
+.nav-item.active {
+  color: var(--lime);
+  background: rgba(200, 245, 62, 0.08);
+  border-left-color: var(--lime);
+}
+.nav-item .icon { font-size: 1rem; width: 18px; text-align: center; }
+.nav-divider { height: 1px; background: var(--border); margin: 8px 16px; }
+.nav-label { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); padding: 6px 20px 4px; }
+.sidebar-user {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--lime), var(--blue));
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; font-size: 0.85rem; color: var(--black);
+  flex-shrink: 0;
+}
+.user-info { flex: 1; overflow: hidden; }
+.user-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 0.7rem; color: var(--text3); }
+.btn-logout {
+  background: none; color: var(--text3); font-size: 0.8rem;
+  padding: 4px; border-radius: 4px;
+  transition: color .15s;
+}
+.btn-logout:hover { color: var(--red); }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  height: var(--header);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  background: var(--dark1);
+  flex-shrink: 0;
+}
+.topbar-title { font-family: 'Barlow Condensed', sans-serif; font-size: 1.3rem; font-weight: 700; flex: 1; }
+.hamburger {
+  display: none; background: none; color: var(--text2);
+  font-size: 1.2rem; padding: 4px 8px; border-radius: 4px;
+}
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* Cards */
+.card {
+  background: var(--dark2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px;
+}
+.card-sm { padding: 14px 16px; }
+.card-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.75rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 12px;
+}
+
+/* Grid helpers */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+
+/* Stat metric */
+.metric-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.4rem; font-weight: 900; line-height: 1;
+  color: var(--text1);
+}
+.metric-val.lime { color: var(--lime); }
+.metric-unit { font-size: 0.85rem; color: var(--text3); margin-left: 2px; }
+.metric-label { font-size: 0.8rem; color: var(--text2); margin-top: 4px; }
+.metric-trend { font-size: 0.75rem; margin-top: 6px; }
+.trend-up { color: var(--lime); }
+.trend-down { color: var(--red); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: var(--r-sm);
+  font-size: 0.88rem; font-weight: 600;
+  transition: all .15s;
+}
+.btn-primary {
+  background: var(--lime); color: var(--black);
+}
+.btn-primary:hover { background: var(--lime2); }
+.btn-ghost {
+  background: var(--surface); color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { color: var(--text1); background: var(--dark3); }
+.btn-danger { background: rgba(255,69,69,0.12); color: var(--red); border: 1px solid rgba(255,69,69,0.2); }
+.btn-danger:hover { background: rgba(255,69,69,0.2); }
+.btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+.btn-icon { padding: 7px; border-radius: var(--r-sm); aspect-ratio: 1; }
+
+/* Badges */
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 20px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.badge-lime { background: rgba(200,245,62,0.15); color: var(--lime); }
+.badge-blue { background: rgba(62,168,255,0.15); color: var(--blue); }
+.badge-amber { background: rgba(255,176,32,0.15); color: var(--amber); }
+.badge-red  { background: rgba(255,69,69,0.15); color: var(--red); }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text3); text-align: left;
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 10px 12px; font-size: 0.88rem; color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface); color: var(--text1); }
+td.bold { font-weight: 600; color: var(--text1); }
+
+/* HR Zone bar */
+.zone-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 1px; }
+.zone-bar div { border-radius: 2px; }
+.z1 { background: #3ea8ff; }
+.z2 { background: #26d97f; }
+.z3 { background: var(--lime); }
+.z4 { background: var(--amber); }
+.z5 { background: var(--red); }
+
+/* RPE dot */
+.rpe-dot {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  font-size: 0.78rem; font-weight: 700;
+}
+.rpe-1,.rpe-2,.rpe-3 { background: rgba(62,168,255,0.2); color: var(--blue); }
+.rpe-4,.rpe-5,.rpe-6 { background: rgba(200,245,62,0.15); color: var(--lime); }
+.rpe-7,.rpe-8 { background: rgba(255,176,32,0.2); color: var(--amber); }
+.rpe-9,.rpe-10 { background: rgba(255,69,69,0.2); color: var(--red); }
+
+/* Session type pill */
+.stype {
+  font-size: 0.72rem; font-weight: 600; padding: 2px 8px;
+  border-radius: 4px; background: var(--dark3); color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+/* Form layout */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 0.78rem; color: var(--text2); font-weight: 500; }
+.form-row { display: flex; gap: 12px; align-items: flex-end; }
+.form-col { flex: 1; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 200; display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: fadeIn .15s ease;
+}
+.modal {
+  background: var(--dark2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 24px;
+  width: 90%; max-width: 540px; max-height: 90vh; overflow-y: auto;
+  animation: slideUp .2s ease;
+}
+.modal-lg { max-width: 760px; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.modal-title { font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; font-weight: 700; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--dark3); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px 16px;
+  font-size: 0.88rem; z-index: 999;
+  animation: slideInRight .3s ease;
+  max-width: 320px;
+}
+.toast.success { border-color: var(--lime); color: var(--lime); }
+.toast.error   { border-color: var(--red); color: var(--red); }
+@keyframes slideInRight { from { transform: translateX(40px); opacity: 0; } }
+
+/* Loading */
+.skeleton {
+  background: linear-gradient(90deg, var(--dark3) 25%, var(--dark4) 50%, var(--dark3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--r-sm);
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+.spin { animation: spin .8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Login */
+.login-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--black);
+  background-image: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(200,245,62,0.06), transparent);
+}
+.login-card {
+  width: 100%; max-width: 380px; padding: 40px;
+  background: var(--dark2); border: 1px solid var(--border); border-radius: var(--r);
+}
+.login-logo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.4rem; font-weight: 900; letter-spacing: -0.03em;
+  color: var(--lime); margin-bottom: 4px;
+}
+.login-sub { font-size: 0.8rem; color: var(--text3); margin-bottom: 32px; }
+
+/* Profile header */
+.profile-hero {
+  background: linear-gradient(135deg, var(--dark2), var(--dark3));
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 24px; display: flex; gap: 20px; align-items: flex-start;
+  position: relative; overflow: hidden;
+}
+.profile-hero::before {
+  content: ''; position: absolute; top: -30px; right: -30px;
+  width: 160px; height: 160px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,245,62,0.08), transparent 70%);
+}
+.profile-avatar {
+  width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--lime), var(--blue));
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.8rem; font-weight: 900; color: var(--black);
+}
+.profile-info { flex: 1; }
+.profile-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1.8rem; font-weight: 900; line-height: 1; }
+.profile-meta { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+.profile-meta-item { font-size: 0.8rem; color: var(--text2); display: flex; gap: 4px; align-items: center; }
+
+/* HR Zone legend */
+.zone-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+.zone-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text2); }
+.zone-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* Chart container */
+.chart-box { position: relative; height: 200px; }
+.chart-box-lg { height: 260px; }
+
+/* AI Report card */
+.ai-card {
+  background: linear-gradient(135deg, rgba(200,245,62,0.05), rgba(62,168,255,0.05));
+  border: 1px solid rgba(200,245,62,0.15);
+  border-radius: var(--r); padding: 20px;
+}
+.ai-label {
+  font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--lime); font-weight: 700; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.ai-text { font-size: 0.9rem; line-height: 1.7; color: var(--text1); }
+.ai-section { margin-top: 14px; }
+.ai-section-title { font-size: 0.8rem; font-weight: 600; color: var(--lime); margin-bottom: 4px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dark4); border-radius: 2px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    transform: translateX(-100%);
+  }
+  .sidebar.open { transform: translateX(0); box-shadow: 0 0 40px rgba(0,0,0,0.6); }
+  .hamburger { display: flex; }
+  .grid-4, .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .grid-2 { grid-template-columns: 1fr; }
+  .content { padding: 16px; }
+  .modal { padding: 16px; }
+  .form-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .profile-hero { flex-direction: column; }
+  .form-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:5000/api'
+  : window.location.origin + '/api';
+let state = {
+  token: localStorage.getItem('vd_token') || null,
+  role:  localStorage.getItem('vd_role')  || null,
+  userId: localStorage.getItem('vd_uid')  || null,
+  page: 'dashboard',
+  selectedAthlete: null,
+  athletes: [],
+  sessions: [],
+  stats: null,
+  overview: null,
+  evaluations: [],
+  currentGoal: null,
+  loading: false,
+};
+
+// ═══════════════════════════════════════════════════════
+// API HELPERS
+// ═══════════════════════════════════════════════════════
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (state.token) opts.headers['Authorization'] = 'Bearer ' + state.token;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+  return data;
+}
+const GET  = (p)    => api('GET', p);
+const POST = (p, b) => api('POST', p, b);
+const PUT  = (p, b) => api('PUT', p, b);
+const DEL  = (p)    => api('DELETE', p);
+
+// ═══════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function categoryLabel(c) {
+  const map = {
+    'Challenge_5_6':'Challenge 5-6', 'Challenge_7_8':'Challenge 7-8',
+    'Challenge_9_10':'Challenge 9-10', 'Challenge_11_12':'Challenge 11-12',
+    'Challenge_13_14':'Challenge 13-14', 'Youth':'Youth (15-16)',
+    'Junior':'Junior (17-18)', 'U23':'Under-23', 'Elite':'Elite'
+  };
+  return map[c] || c || '—';
+}
+
+function sessionTypeLabel(t) {
+  const map = {
+    team_rantai:'Team Rantai', ITT:'ITT', interval:'Interval',
+    hill_repeat:'Tanjakan Berulang', rolling:'Rolling', endurance:'Endurance', recovery:'Recovery'
+  };
+  return map[t] || t;
+}
+
+function formatDur(min) {
+  if (!min) return '—';
+  const h = Math.floor(min/60), m = min%60;
+  return h ? `${h}j ${m}m` : `${m}m`;
+}
+
+function ago(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr), now = new Date();
+  const diff = Math.floor((now-d)/(1000*60*60*24));
+  if (diff===0) return 'Hari ini';
+  if (diff===1) return 'Kemarin';
+  return `${diff}h lalu`;
+}
+
+function rpeClass(r) {
+  if (r<=3) return 'rpe-3';
+  if (r<=6) return 'rpe-6';
+  if (r<=8) return 'rpe-8';
+  return 'rpe-10';
+}
+
+function initials(name) {
+  return (name||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+
+function escHtml(s) {
+  const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════════════════
+function render() {
+  const app = document.getElementById('app');
+  if (!state.token) {
+    app.innerHTML = renderLogin();
+    bindLogin();
+    return;
+  }
+  app.innerHTML = `
+    <div class="app">
+      ${renderSidebar()}
+      <div class="main">
+        ${renderTopbar()}
+        <div class="content" id="content">
+          ${renderPage()}
+        </div>
+      </div>
+    </div>`;
+  bindNav();
+  bindPage();
+  setTimeout(initCharts, 50);
+}
+
+function renderLogin() {
+  return `
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">🚴 VeloDash</div>
+      <div class="login-sub">Club Cycling Performance System</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" id="l-user" placeholder="admin / budi / rina ...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="l-pass" placeholder="admin123 / atlet123">
+        </div>
+        <button class="btn btn-primary" id="btn-login" style="justify-content:center;margin-top:4px">
+          Masuk
+        </button>
+        <p style="font-size:0.75rem;color:var(--text3);text-align:center">
+          Demo: admin/admin123 · atlet: budi/atlet123
+        </p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function bindLogin() {
+  document.getElementById('btn-login').onclick = async () => {
+    const u = document.getElementById('l-user').value;
+    const p = document.getElementById('l-pass').value;
+    try {
+      const data = await POST('/auth/login', { username:u, password:p });
+      state.token = data.token; state.role = data.role; state.userId = data.user_id;
+      localStorage.setItem('vd_token', data.token);
+      localStorage.setItem('vd_role', data.role);
+      localStorage.setItem('vd_uid', data.user_id);
+      await loadInitial();
+      render();
+    } catch(e) { toast(e.message, 'error'); }
+  };
+  document.getElementById('l-pass').addEventListener('keydown', e => {
+    if (e.key==='Enter') document.getElementById('btn-login').click();
+  });
+}
+
+async function loadInitial() {
+  state.athletes = await GET('/athletes');
+  if (state.role === 'admin') {
+    state.overview = await GET('/admin/overview').catch(()=>null);
+  } else {
+    if (state.athletes[0]) {
+      state.selectedAthlete = state.athletes[0];
+      await loadAthleteData(state.athletes[0].id);
+    }
+  }
+}
+
+async function loadAthleteData(aid) {
+  const [sessions, stats, evals, goal] = await Promise.all([
+    GET(`/athletes/${aid}/sessions?limit=30`),
+    GET(`/athletes/${aid}/stats`),
+    GET(`/athletes/${aid}/evaluations`),
+    GET(`/athletes/${aid}/goals/current`).catch(()=>null),
+  ]);
+  state.sessions = sessions;
+  state.stats = stats;
+  state.evaluations = evals;
+  state.currentGoal = goal;
+}
+
+// ── Sidebar ──────────────────────────────────────────────
+function renderSidebar() {
+  const navAdmin = state.role === 'admin' ? `
+    <div class="nav-label">Admin</div>
+    <div class="nav-item ${state.page==='overview'?'active':''}" data-page="overview">
+      <span class="icon">📊</span> Overview Klub
+    </div>
+    <div class="nav-item ${state.page==='athletes'?'active':''}" data-page="athletes">
+      <span class="icon">👥</span> Manajemen Atlet
+    </div>
+    <div class="nav-divider"></div>` : '';
+
+  return `
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">🚴 <span>Velo</span>Dash</div>
+      <div class="logo-sub">Cycling Performance</div>
+    </div>
+    <nav class="nav">
+      ${navAdmin}
+      <div class="nav-label">Atlet</div>
+      <div class="nav-item ${state.page==='dashboard'?'active':''}" data-page="dashboard">
+        <span class="icon">⚡</span> Dashboard
+      </div>
+      <div class="nav-item ${state.page==='sessions'?'active':''}" data-page="sessions">
+        <span class="icon">🗓️</span> Log Latihan
+      </div>
+      <div class="nav-item ${state.page==='analysis'?'active':''}" data-page="analysis">
+        <span class="icon">📈</span> Analisis
+      </div>
+      <div class="nav-item ${state.page==='report'?'active':''}" data-page="report">
+        <span class="icon">🤖</span> AI Report
+      </div>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar">${initials(state.selectedAthlete?.full_name || 'AD')}</div>
+      <div class="user-info">
+        <div class="user-name">${state.selectedAthlete?.full_name || 'Admin'}</div>
+        <div class="user-role">${state.role === 'admin' ? '🔑 Administrator' : categoryLabel(state.selectedAthlete?.category)}</div>
+      </div>
+      <button class="btn-logout" id="btn-logout" title="Keluar">✕</button>
+    </div>
+  </div>`;
+}
+
+function renderTopbar() {
+  const titles = {
+    dashboard:'Dashboard', sessions:'Log Latihan', analysis:'Analisis Performa',
+    report:'AI Report', overview:'Overview Klub', athletes:'Manajemen Atlet'
+  };
+  const extras = {
+    sessions: state.role !== 'admin'
+      ? `<button class="btn btn-primary btn-sm" id="btn-add-session">+ Tambah Sesi</button>` : '',
+    athletes: `<button class="btn btn-primary btn-sm" id="btn-add-athlete">+ Tambah Atlet</button>`,
+    overview: `<button class="btn btn-ghost btn-sm" id="btn-seed">🌱 Seed Demo</button>`
+  };
+  return `
+  <div class="topbar">
+    <button class="hamburger" id="hamburger">☰</button>
+    <div class="topbar-title">${titles[state.page]||''}</div>
+    ${extras[state.page]||''}
+  </div>`;
+}
+
+// ── Page router ──────────────────────────────────────────
+function renderPage() {
+  switch(state.page) {
+    case 'dashboard': return renderDashboard();
+    case 'sessions':  return renderSessions();
+    case 'analysis':  return renderAnalysis();
+    case 'report':    return renderReport();
+    case 'overview':  return renderOverview();
+    case 'athletes':  return renderAthletesMgmt();
+    default:          return renderDashboard();
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// PAGE: DASHBOARD
+// ─────────────────────────────────────────────────────────
+function renderDashboard() {
+  const a = state.selectedAthlete;
+  const s = state.stats;
+  if (!a) return renderSelectAthletePrompt();
+  if (!s) return `<div style="color:var(--text3);padding:40px;text-align:center">Memuat data...</div>`;
+
+  const t = s.totals || {};
+  const r7 = s.recent_7d || {};
+  const goal = state.currentGoal;
+
+  // Goal progress
+  let goalHtml = '';
+  if (goal) {
+    const done = r7.sessions || 0;
+    const pct  = Math.min(100, Math.round((done / (goal.target_sessions||4)) * 100));
+    const kmPct = goal.target_km ? Math.min(100, Math.round(((r7.km||0)/goal.target_km)*100)) : null;
+    goalHtml = `
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-title">🎯 Target Minggu Ini</div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+        <div>
+          <div style="font-size:0.8rem;color:var(--text2);margin-bottom:4px">Sesi (${done}/${goal.target_sessions})</div>
+          <div style="height:8px;background:var(--dark3);border-radius:4px;width:160px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:var(--lime);border-radius:4px;transition:width .5s"></div>
+          </div>
+        </div>
+        ${kmPct !== null ? `<div>
+          <div style="font-size:0.8rem;color:var(--text2);margin-bottom:4px">Jarak (${r7.km||0}/${goal.target_km} km)</div>
+          <div style="height:8px;background:var(--dark3);border-radius:4px;width:160px;overflow:hidden">
+            <div style="height:100%;width:${kmPct}%;background:var(--blue);border-radius:4px;transition:width .5s"></div>
+          </div>
+        </div>` : ''}
+        ${goal.notes ? `<div style="font-size:0.82rem;color:var(--text2);font-style:italic">"${escHtml(goal.notes)}"</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  const recent5 = (s.rpe_trend || []).slice(0,5);
+
+  return `
+  ${renderProfileHero(a)}
+  <div style="height:16px"></div>
+
+  <div class="grid-4" style="margin-bottom:16px">
+    ${goalHtml}
+    <div class="card card-sm">
+      <div class="card-title">7 Hari</div>
+      <div class="metric-val lime">${r7.sessions||0}</div>
+      <div class="metric-label">Sesi latihan</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Jarak 7 Hari</div>
+      <div class="metric-val">${r7.km||0}<span class="metric-unit">km</span></div>
+      <div class="metric-label">Total jarak</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Total Sesi</div>
+      <div class="metric-val">${t.total_sessions||0}</div>
+      <div class="metric-label">Semua waktu</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Total Jarak</div>
+      <div class="metric-val">${t.total_km||0}<span class="metric-unit">km</span></div>
+      <div class="metric-label">Semua waktu</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">Volume Mingguan (8W)</div>
+      <div class="chart-box"><canvas id="chart-weekly"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">RPE Trend</div>
+      <div class="chart-box"><canvas id="chart-rpe"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Tipe Latihan</div>
+      ${renderTypeTable(s.session_types)}
+    </div>
+    <div class="card">
+      <div class="card-title">Sesi Terakhir</div>
+      ${recent5.length ? `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${recent5.map(s => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--dark3);border-radius:6px">
+          <div class="rpe-dot ${rpeClass(s.rpe)}">${s.rpe}</div>
+          <div style="flex:1">
+            <div style="font-size:0.85rem;font-weight:600">${sessionTypeLabel(s.session_type)}</div>
+            <div style="font-size:0.75rem;color:var(--text3)">${s.session_date} · ${s.distance_km||'?'} km</div>
+          </div>
+        </div>`).join('')}
+      </div>` : '<div style="color:var(--text3);font-size:0.85rem">Belum ada sesi</div>'}
+    </div>
+  </div>`;
+}
+
+function renderProfileHero(a) {
+  const age = a.birth_date ? Math.floor((new Date()-new Date(a.birth_date))/3.156e10) : null;
+  const mhr = a.max_hr;
+  const zones = mhr ? [
+    `Z1 <${Math.floor(mhr*.6)}`, `Z2 ${Math.floor(mhr*.6)}-${Math.floor(mhr*.7)}`,
+    `Z3 ${Math.floor(mhr*.7)}-${Math.floor(mhr*.8)}`,
+    `Z4 ${Math.floor(mhr*.8)}-${Math.floor(mhr*.9)}`, `Z5 >${Math.floor(mhr*.9)}`
+  ] : [];
+  const colors = ['#3ea8ff','#26d97f','#c8f53e','#ffb020','#ff4545'];
+
+  return `
+  <div class="profile-hero">
+    <div class="profile-avatar">${initials(a.full_name)}</div>
+    <div class="profile-info">
+      <div class="profile-name">${escHtml(a.full_name)}</div>
+      <div class="profile-meta">
+        <div class="profile-meta-item">${categoryLabel(a.category)}</div>
+        ${age ? `<div class="profile-meta-item">· ${age} tahun</div>` : ''}
+        ${a.weight_kg ? `<div class="profile-meta-item">· ${a.weight_kg} kg</div>` : ''}
+        ${a.height_cm ? `<div class="profile-meta-item">· ${a.height_cm} cm</div>` : ''}
+      </div>
+      ${mhr ? `
+      <div style="margin-top:12px">
+        <div class="zone-legend">
+          ${zones.map((z,i) => `
+          <div class="zone-item">
+            <div class="zone-dot" style="background:${colors[i]}"></div>
+            ${z}
+          </div>`).join('')}
+        </div>
+      </div>` : ''}
+    </div>
+    ${state.role==='admin' ? `
+    <div>
+      <select id="sel-athlete" style="width:auto;font-size:0.82rem;padding:6px 10px">
+        ${state.athletes.map(at => `<option value="${at.id}" ${at.id===a.id?'selected':''}>${escHtml(at.full_name)}</option>`).join('')}
+      </select>
+    </div>` : ''}
+  </div>`;
+}
+
+function renderTypeTable(types) {
+  if (!types?.length) return '<div style="color:var(--text3);font-size:0.85rem">—</div>';
+  return `
+  <div style="display:flex;flex-direction:column;gap:6px">
+    ${types.map(t => `
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="stype" style="width:110px;text-align:center">${sessionTypeLabel(t.session_type)}</span>
+      <div style="flex:1;height:4px;background:var(--dark3);border-radius:2px;overflow:hidden">
+        <div style="height:100%;background:var(--lime);width:${Math.round((t.cnt/(types[0].cnt||1))*100)}%;border-radius:2px"></div>
+      </div>
+      <span style="font-size:0.78rem;color:var(--text3);width:50px;text-align:right">${t.cnt}x · ${t.km||0}km</span>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderSelectAthletePrompt() {
+  return `
+  <div style="text-align:center;padding:60px;color:var(--text3)">
+    <div style="font-size:3rem">🚴</div>
+    <div style="font-size:1.1rem;margin-top:12px">Pilih atlet untuk melihat data</div>
+    <div style="margin-top:16px">
+      <select id="sel-athlete-big" style="width:240px">
+        ${state.athletes.map(a => `<option value="${a.id}">${escHtml(a.full_name)}</option>`).join('')}
+      </select>
+    </div>
+    <button class="btn btn-primary" style="margin-top:12px" id="btn-sel-big">Lihat Dashboard</button>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// PAGE: SESSIONS
+// ─────────────────────────────────────────────────────────
+function renderSessions() {
+  const ss = state.sessions || [];
+  if (!state.selectedAthlete) return renderSelectAthletePrompt();
+
+  return `
+  ${state.role==='admin' ? renderAthleteSelector() : ''}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin:0">Log Latihan — ${escHtml(state.selectedAthlete?.full_name||'')}</div>
+      <span style="font-size:0.8rem;color:var(--text3)">${ss.length} sesi</span>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Tanggal</th><th>Tipe</th><th>Rute</th>
+          <th>Durasi</th><th>Jarak</th><th>Speed Avg</th>
+          <th>HR Avg</th><th>Cadence</th><th>RPE</th>
+          <th>Sumber</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${ss.length ? ss.map(s => `
+        <tr>
+          <td class="bold">${s.session_date}</td>
+          <td><span class="stype">${sessionTypeLabel(s.session_type)}</span></td>
+          <td style="color:var(--text3)">${s.route_type||'—'}</td>
+          <td>${formatDur(s.duration_min)}</td>
+          <td>${s.distance_km ? s.distance_km + ' km' : '—'}</td>
+          <td>${s.avg_speed_kmh ? s.avg_speed_kmh + ' km/h' : '—'}</td>
+          <td>${s.avg_hr ? `<span style="color:var(--red)">${s.avg_hr}</span> bpm` : '—'}</td>
+          <td>${s.avg_cadence ? s.avg_cadence + ' rpm' : '—'}</td>
+          <td><span class="rpe-dot ${rpeClass(s.rpe)}">${s.rpe||'—'}</span></td>
+          <td><span class="badge ${s.data_source==='strava'?'badge-blue':'badge-lime'}">${s.data_source}</span></td>
+          <td>
+            ${state.role !== 'admin' || true ? `
+            <button class="btn btn-danger btn-sm btn-icon del-session" data-id="${s.id}" title="Hapus">🗑</button>` : ''}
+          </td>
+        </tr>`).join('') : `
+        <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text3)">
+          Belum ada sesi latihan. Tambah sesi pertama!
+        </td></tr>`}
+      </tbody>
+    </table>
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// PAGE: ANALYSIS
+// ─────────────────────────────────────────────────────────
+function renderAnalysis() {
+  const s = state.stats;
+  if (!state.selectedAthlete) return renderSelectAthletePrompt();
+  if (!s) return `<div style="color:var(--text3);text-align:center;padding:40px">Memuat...</div>`;
+
+  const t = s.totals || {};
+
+  return `
+  ${state.role==='admin' ? renderAthleteSelector() : ''}
+  <div class="grid-4" style="margin-bottom:16px">
+    <div class="card card-sm">
+      <div class="card-title">Speed Rata-Rata</div>
+      <div class="metric-val lime">${t.avg_speed||'—'}<span class="metric-unit">km/h</span></div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">HR Rata-Rata</div>
+      <div class="metric-val">${t.avg_hr||'—'}<span class="metric-unit">bpm</span></div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Sesi Terpanjang</div>
+      <div class="metric-val">${t.longest_km||'—'}<span class="metric-unit">km</span></div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Speed Terkencang</div>
+      <div class="metric-val">${t.fastest_avg||'—'}<span class="metric-unit">km/h</span></div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">Km Per Minggu</div>
+      <div class="chart-box-lg"><canvas id="chart-km"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Volume vs RPE</div>
+      <div class="chart-box-lg"><canvas id="chart-load"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Breakdown Tipe Latihan</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px;height:200px;position:relative"><canvas id="chart-types"></canvas></div>
+      <div style="flex:2;min-width:260px">
+        ${renderTypeTable(s.session_types)}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// PAGE: AI REPORT
+// ─────────────────────────────────────────────────────────
+function renderReport() {
+  if (!state.selectedAthlete) return renderSelectAthletePrompt();
+  const evals = state.evaluations || [];
+
+  return `
+  ${state.role==='admin' ? renderAthleteSelector() : ''}
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="ai-card" id="ai-report-area">
+      <div class="ai-label">🤖 AI Report Generator</div>
+      <div class="ai-text" id="ai-report-text" style="color:var(--text3)">
+        Klik tombol untuk generate report AI berbasis data latihan ${escHtml(state.selectedAthlete?.full_name||'')}.
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" id="btn-gen-report">⚡ Generate Report</button>
+        ${state.role==='admin' ? `<button class="btn btn-ghost btn-sm" id="btn-save-report" style="display:none">💾 Simpan</button>` : ''}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Riwayat Evaluasi</div>
+      ${evals.length ? `
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${evals.slice(0,5).map(e => `
+        <div style="padding:10px;background:var(--dark3);border-radius:6px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:0.82rem;font-weight:600">${e.eval_date}</span>
+            <span class="badge badge-lime">${e.period}</span>
+          </div>
+          ${e.coach_notes ? `<div style="font-size:0.82rem;color:var(--text2)">${escHtml(e.coach_notes)}</div>` : ''}
+        </div>`).join('')}
+      </div>` : '<div style="color:var(--text3);font-size:0.85rem">Belum ada evaluasi tersimpan</div>'}
+    </div>
+  </div>
+
+  ${state.role==='admin' ? `
+  <div class="card">
+    <div class="card-title">Catatan Pelatih</div>
+    <div style="display:flex;gap:10px;align-items:flex-end">
+      <div style="flex:1">
+        <textarea id="coach-notes" rows="3" style="resize:vertical" placeholder="Tulis catatan evaluasi untuk atlet ini..."></textarea>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btn-save-notes">Simpan</button>
+    </div>
+  </div>` : ''}`;
+}
+
+// ─────────────────────────────────────────────────────────
+// PAGE: OVERVIEW (Admin)
+// ─────────────────────────────────────────────────────────
+function renderOverview() {
+  const ov = state.overview;
+  if (!ov) return `<div style="color:var(--text3);padding:40px;text-align:center">Memuat...</div>`;
+
+  const athletes = ov.athletes || [];
+  const totalKm  = athletes.reduce((s,a) => s+(a.total_km||0), 0);
+  const totalSes = athletes.reduce((s,a) => s+(a.total_sessions||0), 0);
+  const active   = athletes.filter(a => a.last_session && ago(a.last_session).includes('h lalu') && parseInt(ago(a.last_session))<8).length;
+
+  return `
+  <div class="grid-4" style="margin-bottom:16px">
+    <div class="card card-sm">
+      <div class="card-title">Total Atlet</div>
+      <div class="metric-val lime">${athletes.length}</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Total Sesi Klub</div>
+      <div class="metric-val">${totalSes}</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Total KM Klub</div>
+      <div class="metric-val">${totalKm.toFixed(0)}<span class="metric-unit">km</span></div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Aktif 7 Hari</div>
+      <div class="metric-val lime">${active}</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">Volume Mingguan Klub</div>
+      <div class="chart-box"><canvas id="chart-club-weekly"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Atlet per Kategori</div>
+      <div class="chart-box"><canvas id="chart-categories"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Daftar Atlet</div>
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Nama</th><th>Kategori</th><th>Total Sesi</th><th>Total KM</th><th>Avg RPE</th><th>Terakhir Latihan</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        ${athletes.map(a => {
+          const isActive = a.last_session && ago(a.last_session).includes('lalu') && parseInt(ago(a.last_session))<8;
+          const dormant  = !a.last_session || parseInt(ago(a.last_session||'100h lalu'))>14;
+          return `
+          <tr>
+            <td class="bold">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="user-avatar" style="width:26px;height:26px;font-size:0.7rem">${initials(a.full_name)}</div>
+                ${escHtml(a.full_name)}
+              </div>
+            </td>
+            <td><span class="badge badge-blue">${categoryLabel(a.category)}</span></td>
+            <td>${a.total_sessions||0}</td>
+            <td>${a.total_km||0} km</td>
+            <td><span class="rpe-dot ${rpeClass(a.avg_rpe||5)}" style="width:22px;height:22px;font-size:0.72rem">${a.avg_rpe||'—'}</span></td>
+            <td style="color:var(--text3)">${ago(a.last_session)}</td>
+            <td>
+              ${dormant ? '<span class="badge badge-red">Tidak aktif</span>' :
+                isActive ? '<span class="badge badge-lime">Aktif</span>' :
+                '<span class="badge badge-amber">Cukup aktif</span>'}
+            </td>
+            <td>
+              <button class="btn btn-ghost btn-sm view-athlete" data-id="${a.id}">Lihat →</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// PAGE: ATHLETES MANAGEMENT (Admin)
+// ─────────────────────────────────────────────────────────
+function renderAthletesMgmt() {
+  const athletes = state.athletes || [];
+  return `
+  <div class="grid-auto" style="margin-bottom:16px">
+    ${athletes.map(a => `
+    <div class="card" style="cursor:pointer" onclick="">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div class="user-avatar">${initials(a.full_name)}</div>
+        <div>
+          <div style="font-weight:700;font-size:0.92rem">${escHtml(a.full_name)}</div>
+          <div style="font-size:0.72rem;color:var(--text3)">${categoryLabel(a.category)}</div>
+        </div>
+      </div>
+      <div style="font-size:0.78rem;color:var(--text3);margin-bottom:10px">
+        ${a.weight_kg||'?'} kg · ${a.height_cm||'?'} cm
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm view-athlete" data-id="${a.id}">Dashboard</button>
+        <button class="btn btn-ghost btn-sm set-goal-btn" data-id="${a.id}" data-name="${escHtml(a.full_name)}">Goal</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderAthleteSelector() {
+  if (!state.athletes.length) return '';
+  return `
+  <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">
+    <label style="font-size:0.82rem;color:var(--text2)">Atlet:</label>
+    <select id="sel-athlete" style="width:auto">
+      ${state.athletes.map(a => `<option value="${a.id}" ${state.selectedAthlete?.id===a.id?'selected':''}>${escHtml(a.full_name)}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════════════
+let charts = {};
+function destroyCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+}
+
+const chartDefaults = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: {
+    backgroundColor: '#1a1d24', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+    titleColor: '#f0f2f5', bodyColor: '#8b95a8'
+  }},
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#555e72', font: { size: 10 } } },
+    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#555e72', font: { size: 10 } } }
+  }
+};
+
+function initCharts() {
+  destroyCharts();
+  const s = state.stats;
+  const ov = state.overview;
+
+  // Weekly volume chart
+  if (document.getElementById('chart-weekly') && s) {
+    const weeks = s.weekly || [];
+    charts.weekly = new Chart(document.getElementById('chart-weekly'), {
+      type: 'bar',
+      data: {
+        labels: weeks.map(w => w.week.split('-W')[1]+'W'),
+        datasets: [{
+          data: weeks.map(w => w.total_km),
+          backgroundColor: 'rgba(200,245,62,0.5)',
+          borderColor: '#c8f53e', borderWidth: 1, borderRadius: 3
+        }]
+      },
+      options: { ...chartDefaults }
+    });
+  }
+
+  // RPE trend
+  if (document.getElementById('chart-rpe') && s) {
+    const rpe = [...(s.rpe_trend||[])].reverse();
+    charts.rpe = new Chart(document.getElementById('chart-rpe'), {
+      type: 'line',
+      data: {
+        labels: rpe.map(r => r.session_date.slice(5)),
+        datasets: [{
+          data: rpe.map(r => r.rpe),
+          borderColor: '#ffb020', backgroundColor: 'rgba(255,176,32,0.1)',
+          tension: 0.4, fill: true, pointRadius: 4,
+          pointBackgroundColor: '#ffb020'
+        }]
+      },
+      options: { ...chartDefaults, scales: {
+        ...chartDefaults.scales,
+        y: { ...chartDefaults.scales.y, min: 0, max: 10 }
+      }}
+    });
+  }
+
+  // KM per week
+  if (document.getElementById('chart-km') && s) {
+    const weeks = s.weekly || [];
+    charts.km = new Chart(document.getElementById('chart-km'), {
+      type: 'line',
+      data: {
+        labels: weeks.map(w => w.week.split('-W')[1]+'W'),
+        datasets: [{
+          label: 'KM', data: weeks.map(w => w.total_km),
+          borderColor: '#3ea8ff', backgroundColor: 'rgba(62,168,255,0.1)',
+          tension: 0.4, fill: true
+        }]
+      },
+      options: { ...chartDefaults }
+    });
+  }
+
+  // Load chart
+  if (document.getElementById('chart-load') && s) {
+    const rpe = [...(s.rpe_trend||[])].reverse();
+    charts.load = new Chart(document.getElementById('chart-load'), {
+      type: 'bar',
+      data: {
+        labels: rpe.map(r => r.session_date.slice(5)),
+        datasets: [
+          { label: 'KM', data: rpe.map(r => r.distance_km||0), backgroundColor: 'rgba(62,168,255,0.4)', borderRadius: 2, yAxisID: 'y' },
+          { label: 'RPE', data: rpe.map(r => r.rpe), type: 'line', borderColor: '#ff4545', backgroundColor: 'transparent', tension: 0.4, pointRadius: 3, yAxisID: 'y2' }
+        ]
+      },
+      options: { ...chartDefaults, scales: {
+        x: chartDefaults.scales.x,
+        y: { ...chartDefaults.scales.y, position: 'left' },
+        y2: { ...chartDefaults.scales.y, position: 'right', min: 0, max: 10, grid: { display: false } }
+      }, plugins: { ...chartDefaults.plugins, legend: { display: true, labels: { color: '#8b95a8', font: { size: 10 } } } }}
+    });
+  }
+
+  // Type donut
+  if (document.getElementById('chart-types') && s) {
+    const types = s.session_types || [];
+    const colors = ['#c8f53e','#3ea8ff','#ffb020','#ff4545','#26d97f','#a78bfa','#fb923c'];
+    charts.types = new Chart(document.getElementById('chart-types'), {
+      type: 'doughnut',
+      data: {
+        labels: types.map(t => sessionTypeLabel(t.session_type)),
+        datasets: [{ data: types.map(t => t.cnt), backgroundColor: colors, borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, position: 'bottom', labels: { color: '#8b95a8', font: { size: 10 }, boxWidth: 10 } },
+          tooltip: chartDefaults.plugins.tooltip }
+      }
+    });
+  }
+
+  // Club weekly
+  if (document.getElementById('chart-club-weekly') && ov) {
+    const cw = ov.club_weekly || [];
+    charts.clubWeekly = new Chart(document.getElementById('chart-club-weekly'), {
+      type: 'bar',
+      data: {
+        labels: cw.map(w => w.week?.split('-W')?.[1]+'W' || ''),
+        datasets: [
+          { label: 'Total KM', data: cw.map(w => w.total_km), backgroundColor: 'rgba(200,245,62,0.5)', borderColor: '#c8f53e', borderWidth: 1, borderRadius: 3 }
+        ]
+      },
+      options: { ...chartDefaults }
+    });
+  }
+
+  // Categories donut
+  if (document.getElementById('chart-categories') && ov) {
+    const athletes = ov.athletes || [];
+    const catMap = {};
+    athletes.forEach(a => { catMap[a.category] = (catMap[a.category]||0) + 1; });
+    const cats = Object.entries(catMap);
+    const colors = ['#c8f53e','#3ea8ff','#ffb020','#ff4545','#26d97f','#a78bfa','#fb923c'];
+    charts.categories = new Chart(document.getElementById('chart-categories'), {
+      type: 'doughnut',
+      data: {
+        labels: cats.map(c => categoryLabel(c[0])),
+        datasets: [{ data: cats.map(c => c[1]), backgroundColor: colors, borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, position: 'bottom', labels: { color: '#8b95a8', font: { size: 10 }, boxWidth: 10 } },
+          tooltip: chartDefaults.plugins.tooltip }
+      }
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// EVENT BINDINGS
+// ═══════════════════════════════════════════════════════
+function bindNav() {
+  // Hamburger
+  document.getElementById('hamburger')?.addEventListener('click', () => {
+    document.getElementById('sidebar')?.classList.toggle('open');
+  });
+
+  // Logout
+  document.getElementById('btn-logout')?.addEventListener('click', () => {
+    state.token = null; state.role = null; state.userId = null;
+    localStorage.clear(); render();
+  });
+
+  // Nav items
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.page = el.dataset.page;
+      document.getElementById('sidebar')?.classList.remove('open');
+      rerender();
+    });
+  });
+}
+
+async function rerender() {
+  const content = document.getElementById('content');
+  if (content) {
+    destroyCharts();
+    content.innerHTML = renderPage();
+    bindPage();
+    setTimeout(initCharts, 50);
+  }
+  // Update topbar & sidebar
+  document.querySelector('.topbar').outerHTML = renderTopbar();
+  document.querySelector('.sidebar').outerHTML = renderSidebar();
+  bindNav();
+}
+
+function bindPage() {
+  // Athlete selector change
+  document.getElementById('sel-athlete')?.addEventListener('change', async e => {
+    const aid = parseInt(e.target.value);
+    const a = state.athletes.find(x => x.id === aid);
+    if (!a) return;
+    state.selectedAthlete = a;
+    await loadAthleteData(aid);
+    rerender();
+  });
+
+  // Big selector
+  document.getElementById('btn-sel-big')?.addEventListener('click', async () => {
+    const aid = parseInt(document.getElementById('sel-athlete-big').value);
+    const a = state.athletes.find(x => x.id === aid);
+    if (!a) return;
+    state.selectedAthlete = a;
+    await loadAthleteData(aid);
+    rerender();
+  });
+
+  // View athlete from overview
+  document.querySelectorAll('.view-athlete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const aid = parseInt(btn.dataset.id);
+      const a = state.athletes.find(x => x.id === aid);
+      if (!a) return;
+      state.selectedAthlete = a;
+      state.page = 'dashboard';
+      await loadAthleteData(aid);
+      rerender();
+    });
+  });
+
+  // Delete session
+  document.querySelectorAll('.del-session').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Hapus sesi ini?')) return;
+      try {
+        await DEL('/sessions/' + btn.dataset.id);
+        const aid = state.selectedAthlete?.id;
+        if (aid) { state.sessions = await GET(`/athletes/${aid}/sessions?limit=30`); }
+        rerender();
+        toast('Sesi dihapus');
+      } catch(e) { toast(e.message, 'error'); }
+    });
+  });
+
+  // Add session
+  document.getElementById('btn-add-session')?.addEventListener('click', () => showAddSessionModal());
+
+  // Add athlete
+  document.getElementById('btn-add-athlete')?.addEventListener('click', () => showAddAthleteModal());
+
+  // Set goal
+  document.querySelectorAll('.set-goal-btn').forEach(btn => {
+    btn.addEventListener('click', () => showSetGoalModal(parseInt(btn.dataset.id), btn.dataset.name));
+  });
+
+  // Seed demo
+  document.getElementById('btn-seed')?.addEventListener('click', async () => {
+    try {
+      await POST('/admin/seed', {});
+      state.athletes = await GET('/athletes');
+      state.overview = await GET('/admin/overview');
+      rerender();
+      toast('Demo data berhasil di-seed!');
+    } catch(e) { toast(e.message, 'error'); }
+  });
+
+  // AI Report
+  document.getElementById('btn-gen-report')?.addEventListener('click', generateAiReport);
+  document.getElementById('btn-save-report')?.addEventListener('click', saveReport);
+  document.getElementById('btn-save-notes')?.addEventListener('click', saveCoachNotes);
+}
+
+// ═══════════════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════════════
+function showModal(html) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = html;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function showAddSessionModal() {
+  const aid = state.selectedAthlete?.id;
+  if (!aid) { toast('Pilih atlet dulu', 'error'); return; }
+  const today = new Date().toISOString().split('T')[0];
+
+  const overlay = showModal(`
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">+ Tambah Sesi Latihan</div>
+      <button class="btn btn-ghost btn-sm" id="close-modal">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Tanggal *</label>
+        <input type="date" id="f-date" value="${today}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipe Latihan *</label>
+        <select id="f-type">
+          <option value="team_rantai">Team Rantai</option>
+          <option value="ITT">ITT</option>
+          <option value="interval">Interval</option>
+          <option value="hill_repeat">Tanjakan Berulang</option>
+          <option value="rolling">Rolling Route</option>
+          <option value="endurance">Endurance</option>
+          <option value="recovery">Recovery</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rute</label>
+        <select id="f-route">
+          <option value="flat">Flat</option>
+          <option value="hill">Tanjakan</option>
+          <option value="rolling">Rolling</option>
+          <option value="mixed">Mixed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Durasi (menit)</label>
+        <input type="number" id="f-dur" placeholder="90">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Jarak (km)</label>
+        <input type="number" step="0.1" id="f-dist" placeholder="40">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Speed Avg (km/h)</label>
+        <input type="number" step="0.1" id="f-speed" placeholder="28">
+      </div>
+      <div class="form-group">
+        <label class="form-label">HR Avg (bpm)</label>
+        <input type="number" id="f-hr" placeholder="145">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cadence Avg (rpm)</label>
+        <input type="number" id="f-cad" placeholder="85">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Elevasi (m)</label>
+        <input type="number" id="f-elev" placeholder="120">
+      </div>
+      <div class="form-group">
+        <label class="form-label">RPE (1-10) *</label>
+        <input type="number" id="f-rpe" min="1" max="10" placeholder="7">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sumber Data</label>
+        <select id="f-src">
+          <option value="manual">Manual</option>
+          <option value="strava">Strava</option>
+          <option value="fit_file">FIT/GPX</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">Catatan</label>
+      <textarea id="f-notes" rows="2" placeholder="Catatan tambahan..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-ghost" id="close-modal2">Batal</button>
+      <button class="btn btn-primary" id="submit-session">Simpan Sesi</button>
+    </div>
+  </div>`);
+
+  overlay.querySelector('#close-modal').onclick = () => overlay.remove();
+  overlay.querySelector('#close-modal2').onclick = () => overlay.remove();
+  overlay.querySelector('#submit-session').onclick = async () => {
+    const body = {
+      session_date: document.getElementById('f-date').value,
+      session_type: document.getElementById('f-type').value,
+      route_type:   document.getElementById('f-route').value,
+      duration_min: parseInt(document.getElementById('f-dur').value)||null,
+      distance_km:  parseFloat(document.getElementById('f-dist').value)||null,
+      avg_speed_kmh:parseFloat(document.getElementById('f-speed').value)||null,
+      avg_hr:       parseInt(document.getElementById('f-hr').value)||null,
+      avg_cadence:  parseInt(document.getElementById('f-cad').value)||null,
+      elevation_m:  parseInt(document.getElementById('f-elev').value)||null,
+      rpe:          parseInt(document.getElementById('f-rpe').value)||null,
+      data_source:  document.getElementById('f-src').value,
+      notes:        document.getElementById('f-notes').value,
+    };
+    if (!body.session_date || !body.session_type || !body.rpe) {
+      toast('Isi kolom wajib (tanggal, tipe, RPE)', 'error'); return;
+    }
+    try {
+      await POST(`/athletes/${aid}/sessions`, body);
+      state.sessions = await GET(`/athletes/${aid}/sessions?limit=30`);
+      state.stats    = await GET(`/athletes/${aid}/stats`);
+      overlay.remove();
+      rerender();
+      toast('Sesi berhasil ditambahkan!');
+    } catch(e) { toast(e.message, 'error'); }
+  };
+}
+
+function showAddAthleteModal() {
+  const overlay = showModal(`
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">+ Tambah Atlet Baru</div>
+      <button class="btn btn-ghost btn-sm" id="close-modal">✕</button>
+    </div>
+    <div style="font-size:0.82rem;color:var(--text3);margin-bottom:16px">Akun login atlet akan dibuat otomatis.</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Nama Lengkap *</label>
+        <input type="text" id="f-name" placeholder="Budi Santoso">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username *</label>
+        <input type="text" id="f-uname" placeholder="budi">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <input type="password" id="f-pw" placeholder="atlet123">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tanggal Lahir</label>
+        <input type="date" id="f-bday">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Jenis Kelamin</label>
+        <select id="f-gender">
+          <option value="L">Laki-laki</option>
+          <option value="P">Perempuan</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kategori *</label>
+        <select id="f-cat">
+          <option value="Challenge_5_6">Challenge 5-6 thn</option>
+          <option value="Challenge_7_8">Challenge 7-8 thn</option>
+          <option value="Challenge_9_10">Challenge 9-10 thn</option>
+          <option value="Challenge_11_12">Challenge 11-12 thn</option>
+          <option value="Challenge_13_14">Challenge 13-14 thn</option>
+          <option value="Youth">Youth 15-16 thn</option>
+          <option value="Junior">Junior 17-18 thn</option>
+          <option value="U23">Under-23</option>
+          <option value="Elite">Elite</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Berat (kg)</label>
+        <input type="number" id="f-wt" placeholder="50">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tinggi (cm)</label>
+        <input type="number" id="f-ht" placeholder="155">
+      </div>
+      <div class="form-group">
+        <label class="form-label">HR Istirahat (bpm)</label>
+        <input type="number" id="f-rhr" placeholder="60">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pengalaman (tahun)</label>
+        <input type="number" id="f-exp" placeholder="2">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">Catatan Kesehatan</label>
+      <textarea id="f-health" rows="2" placeholder="Riwayat cedera, kondisi khusus..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-ghost" id="close-modal2">Batal</button>
+      <button class="btn btn-primary" id="submit-athlete">Tambah Atlet</button>
+    </div>
+  </div>`);
+
+  overlay.querySelector('#close-modal').onclick = () => overlay.remove();
+  overlay.querySelector('#close-modal2').onclick = () => overlay.remove();
+  overlay.querySelector('#submit-athlete').onclick = async () => {
+    const name = document.getElementById('f-name').value;
+    const uname = document.getElementById('f-uname').value;
+    const pw = document.getElementById('f-pw').value;
+    if (!name || !uname || !pw) { toast('Isi nama, username, dan password', 'error'); return; }
+    try {
+      // Create user account
+      const userRes = await POST('/auth/register', { username: uname, password: pw, role: 'athlete' });
+      // Create athlete profile
+      await POST('/athletes', {
+        user_id: userRes.user_id,
+        full_name: name,
+        birth_date: document.getElementById('f-bday').value || null,
+        gender: document.getElementById('f-gender').value,
+        category: document.getElementById('f-cat').value,
+        weight_kg: parseFloat(document.getElementById('f-wt').value)||null,
+        height_cm: parseFloat(document.getElementById('f-ht').value)||null,
+        resting_hr: parseInt(document.getElementById('f-rhr').value)||null,
+        experience_years: parseInt(document.getElementById('f-exp').value)||0,
+        health_notes: document.getElementById('f-health').value,
+      });
+      state.athletes = await GET('/athletes');
+      state.overview = await GET('/admin/overview').catch(()=>null);
+      overlay.remove();
+      rerender();
+      toast('Atlet berhasil ditambahkan!');
+    } catch(e) { toast(e.message, 'error'); }
+  };
+}
+
+function showSetGoalModal(aid, name) {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - today.getDay() + 1);
+  const weekStart = monday.toISOString().split('T')[0];
+
+  const overlay = showModal(`
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🎯 Set Target — ${escHtml(name)}</div>
+      <button class="btn btn-ghost btn-sm" id="close-modal">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Awal Minggu</label>
+        <input type="date" id="f-week" value="${weekStart}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Sesi</label>
+        <input type="number" id="f-tsess" value="4" min="1" max="7">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target KM</label>
+        <input type="number" id="f-tkm" placeholder="150">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Durasi (menit)</label>
+        <input type="number" id="f-tdur" placeholder="360">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">Catatan untuk Atlet</label>
+      <textarea id="f-gnotes" rows="2" placeholder="Fokus endurance minggu ini..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-ghost" id="close-modal2">Batal</button>
+      <button class="btn btn-primary" id="submit-goal">Simpan Target</button>
+    </div>
+  </div>`);
+
+  overlay.querySelector('#close-modal').onclick = () => overlay.remove();
+  overlay.querySelector('#close-modal2').onclick = () => overlay.remove();
+  overlay.querySelector('#submit-goal').onclick = async () => {
+    try {
+      await POST(`/athletes/${aid}/goals`, {
+        week_start: document.getElementById('f-week').value,
+        target_sessions: parseInt(document.getElementById('f-tsess').value)||4,
+        target_km: parseFloat(document.getElementById('f-tkm').value)||null,
+        target_duration_min: parseInt(document.getElementById('f-tdur').value)||null,
+        notes: document.getElementById('f-gnotes').value,
+      });
+      overlay.remove();
+      toast('Target berhasil disimpan!');
+    } catch(e) { toast(e.message, 'error'); }
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// AI REPORT
+// ═══════════════════════════════════════════════════════
+let lastAiReport = null;
+
+async function generateAiReport() {
+  const a = state.selectedAthlete;
+  const s = state.stats;
+  if (!a || !s) { toast('Data atlet belum dimuat', 'error'); return; }
+
+  const btn = document.getElementById('btn-gen-report');
+  const area = document.getElementById('ai-report-text');
+  if (!btn || !area) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating...';
+  area.innerHTML = '<span class="spin">⚙️</span> Sedang menganalisis data latihan...';
+
+  const t = s.totals || {};
+  const recent7 = s.recent_7d || {};
+  const weeks = s.weekly || [];
+  const types = s.session_types || [];
+  const rpeData = s.rpe_trend || [];
+  const avgRpe = rpeData.length ? (rpeData.reduce((a,r)=>a+(r.rpe||0),0)/rpeData.length).toFixed(1) : 'N/A';
+  const lastSession = rpeData[0];
+
+  const age = a.birth_date ? Math.floor((new Date()-new Date(a.birth_date))/3.156e10) : null;
+
+  const prompt = `Kamu adalah pelatih sepeda berpengalaman yang menganalisis performa atlet muda.
+
+DATA ATLET:
+- Nama: ${a.full_name}
+- Usia: ${age||'N/A'} tahun
+- Kategori ISSI: ${categoryLabel(a.category)}
+- Berat: ${a.weight_kg||'N/A'} kg, Tinggi: ${a.height_cm||'N/A'} cm
+- HR Istirahat: ${a.resting_hr||'N/A'} bpm, HR Max: ${a.max_hr||'N/A'} bpm
+- Pengalaman: ${a.experience_years||0} tahun
+
+STATISTIK KESELURUHAN:
+- Total sesi: ${t.total_sessions||0}
+- Total jarak: ${t.total_km||0} km
+- Speed rata-rata: ${t.avg_speed||'N/A'} km/h
+- HR rata-rata: ${t.avg_hr||'N/A'} bpm
+- Sesi terpanjang: ${t.longest_km||'N/A'} km
+
+7 HARI TERAKHIR:
+- Sesi: ${recent7.sessions||0}
+- Jarak: ${recent7.km||0} km
+- Durasi: ${Math.round((recent7.min||0)/60*10)/10} jam
+
+TIPE LATIHAN TERBANYAK:
+${types.slice(0,4).map(t => `- ${sessionTypeLabel(t.session_type)}: ${t.cnt}x (${t.km} km)`).join('\n')}
+
+RPE RATA-RATA: ${avgRpe}/10
+SESI TERAKHIR: ${lastSession ? `${lastSession.session_type} - ${lastSession.session_date}, RPE ${lastSession.rpe}, ${lastSession.distance_km} km` : 'N/A'}
+
+Buat laporan evaluasi dalam Bahasa Indonesia yang terdiri dari:
+1. RINGKASAN: Evaluasi singkat performa umum (2-3 kalimat)
+2. KEKUATAN: Apa yang sudah bagus (2-3 poin)
+3. PERHATIAN: Area yang perlu diperbaiki atau risiko overtraining (2-3 poin)
+4. REKOMENDASI: Program latihan minggu depan yang spesifik (3-4 poin)
+5. PESAN UNTUK ORANG TUA: Penjelasan singkat dalam bahasa sederhana
+
+Format respons sebagai JSON:
+{"ringkasan":"...","kekuatan":["...","..."],"perhatian":["...","..."],"rekomendasi":["...","..."],"pesan_ortu":"..."}
+
+Hanya keluarkan JSON, tanpa teks lain.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.map(c => c.text||'').join('') || '';
+    const clean = text.replace(/```json|```/g,'').trim();
+    const report = JSON.parse(clean);
+    lastAiReport = report;
+
+    area.innerHTML = `
+    <div class="ai-section">
+      <div class="ai-section-title">📋 Ringkasan</div>
+      <div>${escHtml(report.ringkasan)}</div>
+    </div>
+    <div class="ai-section">
+      <div class="ai-section-title">✅ Kekuatan</div>
+      ${report.kekuatan.map(k=>`<div style="margin-bottom:4px">• ${escHtml(k)}</div>`).join('')}
+    </div>
+    <div class="ai-section">
+      <div class="ai-section-title">⚠️ Perhatian</div>
+      ${report.perhatian.map(p=>`<div style="margin-bottom:4px">• ${escHtml(p)}</div>`).join('')}
+    </div>
+    <div class="ai-section">
+      <div class="ai-section-title">🎯 Rekomendasi Minggu Depan</div>
+      ${report.rekomendasi.map(r=>`<div style="margin-bottom:4px">• ${escHtml(r)}</div>`).join('')}
+    </div>
+    <div class="ai-section" style="background:rgba(62,168,255,0.06);padding:10px;border-radius:6px;border-left:2px solid var(--blue)">
+      <div class="ai-section-title" style="color:var(--blue)">👨‍👩‍👧 Pesan untuk Orang Tua</div>
+      <div style="color:var(--text2)">${escHtml(report.pesan_ortu)}</div>
+    </div>`;
+
+    const saveBtn = document.getElementById('btn-save-report');
+    if (saveBtn) saveBtn.style.display = 'inline-flex';
+  } catch(e) {
+    area.innerHTML = `<span style="color:var(--red)">Gagal generate report: ${e.message}</span>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '⚡ Generate Report';
+}
+
+async function saveReport() {
+  const aid = state.selectedAthlete?.id;
+  if (!aid || !lastAiReport) return;
+  try {
+    await POST(`/athletes/${aid}/evaluations`, {
+      period: 'weekly',
+      ai_report: lastAiReport,
+    });
+    state.evaluations = await GET(`/athletes/${aid}/evaluations`);
+    rerender();
+    toast('Report tersimpan!');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveCoachNotes() {
+  const aid = state.selectedAthlete?.id;
+  const notes = document.getElementById('coach-notes')?.value;
+  if (!aid || !notes) { toast('Tulis catatan dulu', 'error'); return; }
+  try {
+    await POST(`/athletes/${aid}/evaluations`, { period: 'weekly', coach_notes: notes });
+    state.evaluations = await GET(`/athletes/${aid}/evaluations`);
+    rerender();
+    toast('Catatan tersimpan!');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════
+// BOOTSTRAP
+// ═══════════════════════════════════════════════════════
+async function boot() {
+  if (state.token) {
+    try {
+      await loadInitial();
+    } catch(e) {
+      state.token = null; localStorage.clear();
+    }
+  }
+  render();
+}
+
+boot();
+</script>
+</body>
+</html>
